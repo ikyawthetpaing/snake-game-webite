@@ -1,4 +1,3 @@
-//const GRID = document.getElementById("grid");
 const GRID = document.querySelector(".grid");
 const GAP = 20;
 const PIECE_SIZE = 40;
@@ -16,9 +15,21 @@ const DOWN = "down";
 const LEFT = "left";
 const RIGHT = "right";
 const NONE = "none";
-const SPEED = 4;
-const TIME_STEP = 1000/SPEED;
 
+var speed = 4;
+var score = 0;
+const TIME_STEP = 1000/speed;
+
+// For touchscreen event
+var start_coord_x = 0;
+var start_coord_y = 0;
+var end_coord_x = 0;
+var end_coord_y = 0;
+
+var opposite = 0;
+var adjacent = 0;
+var hypotenuse = 0;
+var angle = 0;
 
 GRID.style.width = GRID_WIDTH + "px";
 GRID.style.height = GRID_HEIGHT + "px";
@@ -35,17 +46,6 @@ for (let row = 0, i = 0; row < ROW; row++) {
     }
     PIECE.push(temp);
 }
-
-/*
-for (let i = 0; i < TOATAL_PIECE; i++) {
-    let piece = document.createElement("div");
-    piece.style.width = PIECE_SIZE + "px";
-    piece.style.height = PIECE_SIZE + "px";
-    piece.setAttribute("class", "piece");
-    //GRID.appendChild(piece);
-    PIECE.push(piece);
-}
-*/
 
 function getGridWidth() {
     for (let i = getClientWidth() - GAP * 2; i > 0; i--) {
@@ -104,11 +104,15 @@ class Food {
                 this.place();
             }
         }
-        PIECE[this.column][this.row].style.backgroundColor = this.color;
+        this.render(this.color);
     }
 
     clear() {
-        PIECE[this.column][this.row].style.backgroundColor = BACKGROUND_COLOR;
+        this.render(BACKGROUND_COLOR);
+    }
+
+    render(texture) {
+        PIECE[this.column][this.row].style.backgroundColor = texture;
     }
 
     reset(snake_coordinates) {
@@ -173,7 +177,8 @@ class Snake {
             default:
                 console.log("something went wrong!");
                 break;
-        }        
+        }
+        this.render_body();
     }
 
     render(texture) {
@@ -237,7 +242,6 @@ class Snake {
     reset() {
         this.clear_body();
         this.new();
-        this.render_body();
     }
 
     handleEventKeyboard() {
@@ -260,16 +264,6 @@ class Snake {
     }
 
     handleEventTouchScreen() {
-        let start_coord_x = 0;
-        let start_coord_y = 0;
-        let end_coord_x = 0;
-        let end_coord_y = 0;
-
-        let opposite = 0;
-        let adjacent = 0;
-        let hypotenuse = 0;
-        let angle = 0;
-
         document.addEventListener("touchstart", event => {
             [...event.changedTouches].forEach(touch => {
                 start_coord_x = touch.pageX;
@@ -307,16 +301,16 @@ class Snake {
 
                     angle = Math.abs(angle);
 
-                    if (angle < 45 || angle > 315) {
+                    if ((angle < 45 || angle > 315) && this.direction !== LEFT) {
                         this.direction = RIGHT;
                     }
-                    else if (angle > 45 && angle < 135) {
+                    else if (angle > 45 && angle < 135 && this.direction !== DOWN) {
                         this.direction = UP;
                     }
-                    else if (angle > 135 && angle < 225) {
+                    else if (angle > 135 && angle < 225 && this.direction !== RIGHT) {
                         this.direction = LEFT;
                     }
-                    else if (angle > 225 && angle < 315) {
+                    else if (angle > 225 && angle < 315 && this.direction !== UP) {
                         this.direction = DOWN;
                     }
                 }
@@ -324,14 +318,11 @@ class Snake {
         });
     }
 
-    move() {
+    handleMovement() {
         let head = this.head();
         let head_coord_x = head[0];
         let head_coord_y = head[1];
 
-        this.handleEventKeyboard();
-        this.handleEventTouchScreen();
-        
         if (this.direction === UP) {
             head_coord_y -= 1;
         }
@@ -344,10 +335,15 @@ class Snake {
         else if (this.direction === RIGHT) {
             head_coord_x += 1;
         }
-
         let new_head = [head_coord_x, head_coord_y];
         this.coordinates.unshift(new_head);
         this.render_head();
+    }
+
+    move() {
+        this.handleEventKeyboard();
+        this.handleEventTouchScreen();
+        this.handleMovement();
     }    
 }
 
@@ -355,15 +351,16 @@ var food = new Food();
 var snake = new Snake();
 
 food.place(snake.coordinates);
-snake.render_body();
 
 function play() {
     snake.move();
-    if (snake.collide(food)) {
+    if (snake.collide()) {
         reset();
     }
     else {
         if (snake.eat(food)) {
+            score += 1;
+            console.log(score);
             food.place(snake.coordinates);
         }
         else {
